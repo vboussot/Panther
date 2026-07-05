@@ -53,3 +53,36 @@ We combined the panther curvas with multiple fine-tuned models with **STAPLE ens
 - 🔗 **Official baseline model (MRSegmentator v1.2.0)**: [GitHub Release](https://github.com/hhaentze/MRSegmentator/releases/tag/v1.2.0)  
 
 ---
+
+## 🚀 Build & run
+
+The weights are **not** committed (`resources/` is git-ignored) and are baked into the image at build
+time. Place them first, then build:
+
+```
+resources/
+├── nnUNet_results/   # 5-fold nnUNet ResEncUNet-L ensemble (from Hugging Face VBoussot/Panther)
+└── Model/            # MRSegmentator v1.2.0 weights
+```
+
+```bash
+./do_build.sh                 # docker build --platform=linux/amd64 --tag panther-baseline
+./do_test_run.sh              # forward pass over test/input → test/output (GPU, --network none)
+./do_save.sh                  # export the image as a gzipped tar for Grand Challenge upload
+```
+
+**Runtime pipeline:** MRSegmentator localizes the pancreas (label 7) → margin-crop ROI →
+5-model nnUNet **ResEncUNet-L** ensemble → `STAPLE` fusion (0.5) → un-crop → `tumor_seg.mha`.
+`nnUNetTrainer_Xepochs.py` is injected into the nnUNet install at build time because it is required to
+load the custom-epoch checkpoints. I/O follows the Grand Challenge convention
+(`/input/images/*mri*` → `/output/images/pancreatic-tumor-segmentation/tumor_seg.mha`).
+
+## 🧠 Framework note
+
+[KonfAI](https://github.com/vboussot/KonfAI) produced the **auxiliary/experimental** models explored
+during development (SynthRAD sCT, Curvas CT — strategies 1–2 above). The **final** submitted container
+is a standard **nnUNet + MRSegmentator** pipeline and has no KonfAI dependency at inference.
+
+Source files carry Apache-2.0 headers.
+
+---
